@@ -46,25 +46,45 @@ _
         exit 0;
     },
     'sort=s'  => \$Opts{sort},
-    },
 );
 
 my $cmd = "find" . (@ARGV ? " " : "") .
     join(" ", map { ShellQuote::Any::Tiny::shell_quote($_) } @ARGV);
-open my $findh, "$cmd |" or die "findsort: Can't run find: $!\n";
+open my $findh, "$cmd |" or die "findsort: Can't run find: $!\n"; ## no critic: InputOutput::ProhibitTwoArgOpen
 
 my @files;
 while (!eof($findh)) {
     no warnings 'uninitialized'; # "Use of uninitialized value in subroutine entry" at line below
-    defined(my $line = fgets($rsync, 32))
+    defined(my $line = fgets($findh, 32))
         or die "findsort: fgets failed: $!\n";
 
     chomp $line;
     push @files, $line;
 }
 
-close $rsync;
+close $findh;
 my $exit = $? >> 8;
+
+if (!$Opts{sort}) {
+    # no sorting needed
+} elsif ($Opts{sort} eq 'mtime') {
+    @files = sort { (-M $b) <=> (-M $a) } @files;
+} elsif ($Opts{sort} eq '-mtime') {
+    @files = sort { (-M $a) <=> (-M $b) } @files;
+} elsif ($Opts{sort} eq 'ctime') {
+    @files = sort { (-C $b) <=> (-C $a) } @files;
+} elsif ($Opts{sort} eq '-ctime') {
+    @files = sort { (-C $a) <=> (-C $b) } @files;
+} elsif ($Opts{sort} eq 'size') {
+    @files = sort { (-s $a) <=> (-s $b) } @files;
+} elsif ($Opts{sort} eq '-size') {
+    @files = sort { (-s $b) <=> (-s $a) } @files;
+} else {
+    die "findsort: Unknown -sort value: $Opts{sort}\n";
+}
+
+print map { "$_\n" } @files;
+exit $exit;
 
 # ABSTRACT: Unix find wrapper that has sorting option
 # PODNAME:
@@ -77,6 +97,12 @@ Use like you would use B<find>, but with optional C<-sort> option:
 
 
 =head1 DESCRIPTION
+
+Despite Unix toolbox philosophy being in general useful, sometimes it's
+convenient to merge several Unix utilities into one. This is one of such cases.
+Either because B<sort> by default does not offer sorting entries as files, or
+because in some situation (e.g. with ssh and Bourne shell account) the syntax to
+combine commands is limited.
 
 
 =head1 OPTIONS
