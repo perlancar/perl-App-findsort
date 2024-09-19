@@ -1,0 +1,96 @@
+#!perl
+
+use 5.010001;
+use strict;
+use warnings;
+
+use File::Which;
+use Getopt::Long;
+use PerlIO::fgets;
+use ShellQuote::Any::Tiny;
+
+# AUTHORITY
+# DATE
+# DIST
+# VERSION
+
+my %Opts = (
+    sort  => undef,
+);
+
+Getopt::Long::Configure(
+    'pass_through', 'no_auto_abbrev',
+    #'permute'
+);
+GetOptions(
+    'help|h|?' => sub {
+        print <<'_';
+Usage:
+  % findsort [findsort-options] [find-options and arguments]
+  % findsort -help
+  % findsort -version
+findsort options:
+  -help           Show this message and exit.
+  -version        Show program version and exit.
+  -sort=SORT      Pick a sorting order. Available: mtime, -mtime, ctime, -ctime,
+                  size, -size. The "-" prefix means descending order.
+
+All the other options will be passed to find.
+_
+        exit 0;
+    },
+    'version' => sub {
+        no warnings 'once';
+        print "findsort version ", ($main::VERSION || "dev"),
+            ($main::DATE ? " ($main::DATE)" : ""), "\n";
+        exit 0;
+    },
+    'sort=s'  => \$Opts{sort},
+    },
+);
+
+my $cmd = "find" . (@ARGV ? " " : "") .
+    join(" ", map { ShellQuote::Any::Tiny::shell_quote($_) } @ARGV);
+open my $findh, "$cmd |" or die "findsort: Can't run find: $!\n";
+
+my @files;
+while (!eof($findh)) {
+    no warnings 'uninitialized'; # "Use of uninitialized value in subroutine entry" at line below
+    defined(my $line = fgets($rsync, 32))
+        or die "findsort: fgets failed: $!\n";
+
+    chomp $line;
+    push @files, $line;
+}
+
+close $rsync;
+my $exit = $? >> 8;
+
+# ABSTRACT: Unix find wrapper that has sorting option
+# PODNAME:
+
+=head1 SYNOPSIS
+
+Use like you would use B<find>, but with optional C<-sort> option:
+
+ % findsort -sort=-mtime -type d -name '*.git'
+
+
+=head1 DESCRIPTION
+
+
+=head1 OPTIONS
+
+=head2 -help
+
+=head2 -version
+
+=head2 -sort
+
+
+=head1 ENVIRONMENT
+
+
+=head1 SEE ALSO
+
+=cut
