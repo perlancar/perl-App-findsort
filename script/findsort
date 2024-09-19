@@ -6,7 +6,6 @@ use warnings;
 
 use File::Which;
 use Getopt::Long;
-use PerlIO::fgets;
 use ShellQuote::Any::Tiny;
 
 # AUTHORITY
@@ -55,8 +54,8 @@ open my $findh, "$cmd |" or die "findsort: Can't run find: $!\n"; ## no critic: 
 my @files;
 while (!eof($findh)) {
     no warnings 'uninitialized'; # "Use of uninitialized value in subroutine entry" at line below
-    defined(my $line = fgets($findh, 32))
-        or die "findsort: fgets failed: $!\n";
+    defined(my $line = <$findh>)
+        or die "findsort: getline() failed: $!\n";
 
     chomp $line;
     push @files, $line;
